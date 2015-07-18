@@ -1,0 +1,16 @@
+{
+  "name": "Controls.CCarouselControl",
+  "version": "0.0.0",
+  "homepage": "https://github.com/controlsts/Controls.CCarouselControl",
+  "authors": [
+    "swcho <sungwoo.cho.dev@gmail.com>"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
