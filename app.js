@@ -49,6 +49,18 @@ var gApp;
         el: document.body,
         orientation: 1 /* EVertical */,
         controls: [
+            Controls.LayoutControl({
+                id: 'idStatus',
+                itemDrawers: [
+                    function (aElement, aIndex) {
+                        Controls.Item({
+                            el: aElement,
+                            innerText: 'Use navigation keys (up, down, left, right)'
+                        });
+                        return 1 /* KFocusNone */;
+                    }
+                ]
+            }),
             Controls.CarouselControl({
                 orientation: 2 /* EHorizontal */,
                 viewCount: viewCount,

@@ -61,6 +61,18 @@ module gApp {
         el: document.body,
         orientation: Controls.TParamOrientation.EVertical,
         controls: [
+            Controls.LayoutControl({
+                id: 'idStatus',
+                itemDrawers: [
+                    function(aElement: HTMLElement, aIndex: number) {
+                        Controls.Item({
+                            el: aElement,
+                            innerText: 'Use navigation keys (up, down, left, right)'
+                        });
+                        return Controls.TFocusInfo.KFocusNone;
+                    }
+                ]
+            }),
             Controls.CarouselControl({
                 orientation: Controls.TParamOrientation.EHorizontal,
                 viewCount: viewCount,
