@@ -16,3 +16,14 @@ body p {
 body .-carousel {
   height: 100px;
 }
+body .-carousel .-carousel-item {
+  top: 10px;
+  left: 10px;
+  width: 80px;
+  height: 80px;
+  background-color: #c793fe;
+}
+body .-carousel .-carousel-anchor {
+  width: 100px;
+  height: 100px;
+}
