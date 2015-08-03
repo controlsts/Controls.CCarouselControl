@@ -778,7 +778,7 @@ module Controls {
         ERight,
     }
     var KParamAnimation = "animation";
-    var KParamUserAnimationCSS = "userAnimationCSS";
+    var KParamConfigTransition = "configTransition";
     var KParamAnimationInterval = "animationInterval";
     var KParamKeepFocus = "keepFocus";
     /* -- DEPRECATED
@@ -1029,11 +1029,11 @@ module Controls {
             return this._getDrawParam(KParamAnimation) || false;
         }
         // User Animation CSS
-        setUseUserAnimationCSS(aAnimation: boolean) {
-            this._setDrawParam(KParamUserAnimationCSS, aAnimation, false);
+        setConfigTransition(aConfigTransition: boolean) {
+            this._setDrawParam(KParamConfigTransition, aConfigTransition, false);
         }
-        getUseUserAnimationCSS(): boolean {
-            return this._getDrawParam(KParamUserAnimationCSS) || false;
+        getConfigTransition(): boolean {
+            return this._getDrawParam(KParamConfigTransition) || false;
         }
         // AnimationInterval
         setAnimationInterval(aAnimationInterval: number) {
@@ -1092,10 +1092,10 @@ module Controls {
             return this._getDrawParam(KParamStrTransparentAnchor) || false;
         }
         // DrawEfect
-        setDrawEfect(aDrawEfect: string) {
-            this._setDrawParam(KParamStrDrawEffect, aDrawEfect, true);
+        setDrawEffect(aDrawEffect: string) {
+            this._setDrawParam(KParamStrDrawEffect, aDrawEffect, true);
         }
-        getDrawEfect(): string {
+        getDrawEffect(): string {
             return this._getDrawParam(KParamStrDrawEffect) || null;
         }
         // Scrolling scheme
@@ -4106,7 +4106,7 @@ module Controls {
         private _createItem(aItem: { index: number; data: any; }, aTop: number, aClassName?: string): HTMLElement {
             var orientation: TParamOrientation = this.getOrientation();
             var animation: boolean = this.getAnimation();
-            var useUserAnimationCSS: boolean = this.getUseUserAnimationCSS();
+            var configTransition: boolean = this.getConfigTransition();
             var animationInterval = this.getAnimationInterval();
             if (!animationInterval) {
                 animationInterval = 0.3;
@@ -4124,12 +4124,12 @@ module Controls {
                 itemEl.classList.add(classNames[i]);
             }
             if (orientation === TParamOrientation.EHorizontal) {
-                if (animation && !useUserAnimationCSS) {
+                if (animation && configTransition) {
                     itemEl.style.transition = 'left ' + animationInterval + 's linear';
                 }
                 itemEl.style.left = aTop + 'px';
             } else {
-                if (animation && !useUserAnimationCSS) {
+                if (animation && configTransition) {
                     itemEl.style.transition = 'top ' + animationInterval + 's linear';
                 }
                 itemEl.style.top = aTop + 'px';
@@ -4139,20 +4139,20 @@ module Controls {
             }
             return itemEl;
         }
-        /*protected*/ _doDraw(aRect: TRect, aDrawParam: { [key: string]: any; }): HTMLElement[] {
-        var ret: HTMLElement[];
-        this.setTransition(false);
-        if (this._dataChanged) {
-            if (this.getOrientation() == TParamOrientation.EHorizontal) {
-                this._keyMapBuilder = KBuilderLeftRight;
-            } else {
-                this._keyMapBuilder = KBuilderTopDown;
+        protected _doDraw(aRect: TRect, aDrawParam: { [key: string]: any; }): HTMLElement[] {
+            var ret: HTMLElement[];
+            this.setTransition(false);
+            if (this._dataChanged) {
+                if (this.getOrientation() == TParamOrientation.EHorizontal) {
+                    this._keyMapBuilder = KBuilderLeftRight;
+                } else {
+                    this._keyMapBuilder = KBuilderTopDown;
+                }
+                this._doDrawItems();
             }
-            this._doDrawItems();
+            ret = [this._anchorEl];
+            return ret;
         }
-        ret = [this._anchorEl];
-        return ret;
-    }
         private _doDrawItems(): HTMLElement {
             var align: TParamOrientation = this.getOrientation();
             var menuLen: number = this._cirMenuItems.length();
@@ -4162,7 +4162,7 @@ module Controls {
             var anchorIndex: number = this.getAnchorIndex();
             var startIndex: number = this.getStartIndex();
             var transparentAnchor: boolean = this.getTransparentAnchor();
-            var drawEffect: string = this.getDrawEfect();
+            var drawEffect: string = this.getDrawEffect();
             var drawnItems: any = [];
             var i: number;
 
@@ -4221,13 +4221,12 @@ module Controls {
                 this._element.appendChild(this._upperBoundEl);
                 this._element.appendChild(this._lowerBoundEl);
             }
-
             /*
              * Make draw info for each items
              */
             var result = this._cirMenuItems.getViewItems(viewCount, anchorIndex);
             var parentEl: HTMLElement = null;
-            var drawInfos: { position: number; parentEl: HTMLElement; positionStart: number; }[] = [];
+            var drawInfos: { skip?: boolean; position: number; parentEl: HTMLElement; positionStart: number; }[] = [];
             var nextPosition: number = 0;
             var itemPosition: number = 0;
             if (align == TParamOrientation.EVertical) {
@@ -4256,15 +4255,21 @@ module Controls {
                             itemPositionStart = -itemWidth;
                         }
                     }
+                    drawInfos.push({
+                        skip: i == anchorIndex,
+                        position: itemPosition,
+                        parentEl: parentEl,
+                        positionStart: itemPositionStart
+                    });
                 } else {
                     parentEl = this._element;
                     itemPosition = nextPosition;
+                    drawInfos.push({
+                        position: itemPosition,
+                        parentEl: parentEl,
+                        positionStart: itemPositionStart
+                    });
                 }
-                drawInfos.push({
-                    position: itemPosition,
-                    parentEl: parentEl,
-                    positionStart: itemPositionStart
-                });
                 if (align == TParamOrientation.EVertical) {
                     nextPosition += i === anchorIndex ? anchorHeight : itemHeight;
                 } else {
@@ -4278,7 +4283,7 @@ module Controls {
                 var distClassName = CCarouselControl.KClassDistPrefix + dist;
                 var drawInfo = drawInfos[i];
                 var itemEl = null;
-                if (drawInfo.parentEl) {
+                if (!drawInfo.skip && drawInfo.parentEl) {
                     if (drawEffect == 'spreadOut') {
                         itemEl = this._createItem(item, drawInfo.positionStart, distClassName);
                     } else {
@@ -4306,7 +4311,7 @@ module Controls {
                             }
                         }
                     }
-                }, 1);
+                }, 0);
             }
 
             var anchorEl = document.createElement('div');
@@ -4469,7 +4474,7 @@ module Controls {
                 this._handleTransitionEnd();
             });
         }
-        private _update2(aDown: boolean) {
+        private _update(aDown: boolean) {
             var menuLen: number = this._cirMenuItems.length();
             var itemHeight: number = this.getItemHeight();
             var itemWidth: number = this.getItemWidth();
@@ -4606,7 +4611,7 @@ module Controls {
                         });
                     }
                 }
-            }, 1);
+            }, 0);
         }
 
         private _doTransitionBack() {
@@ -4634,15 +4639,15 @@ module Controls {
             var result = this._cirMenuItems.getViewItems(viewCount, anchorIndex);
             var items = result.items;
             if (this.getTransparentAnchor()) {
-                var uppperItemNodeList = this._upperBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
+                var upperItemNodeList = this._upperBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
                 var lowerItemNodeList = this._lowerBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
                 var newUpperEl, newLowerEl;
                 if (dataLen < viewCount) {
                     newUpperEl = this._createItem(null, -itemSize);
-                    this._upperBoundEl.insertBefore(newUpperEl, uppperItemNodeList[0]);
-                    uppperItemNodeList = this._upperBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
-                    for (i = 0, len = uppperItemNodeList.length; i < len; i += 1) {
-                        itemEl = <HTMLElement> uppperItemNodeList[i];
+                    this._upperBoundEl.insertBefore(newUpperEl, upperItemNodeList[0]);
+                    upperItemNodeList = this._upperBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
+                    for (i = 0, len = upperItemNodeList.length; i < len; i += 1) {
+                        itemEl = <HTMLElement> upperItemNodeList[i];
                         itemEl.innerText = '';
                         item = items[i];
                         if (item) {
@@ -4663,7 +4668,7 @@ module Controls {
                 } else {
                     newUpperEl = this._createItem(items[0], -itemSize, null);
                     newLowerEl = this._createItem(items[anchorIndex + 1], -itemSize, null);
-                    uppperItemNodeList[0].parentNode.insertBefore(newUpperEl, uppperItemNodeList[0]);
+                    upperItemNodeList[0].parentNode.insertBefore(newUpperEl, upperItemNodeList[0]);
                     lowerItemNodeList[0].parentNode.insertBefore(newLowerEl, lowerItemNodeList[0]);
                 }
             } else {
@@ -4685,7 +4690,7 @@ module Controls {
             if (animation) {
                 this._animate(false);
             } else {
-                this._update2(false);
+                this._update(false);
             }
         }
 
@@ -4782,7 +4787,7 @@ module Controls {
             if (animation) {
                 this._animate(true);
             } else {
-                this._update2(true);
+                this._update(true);
             }
         }
 
@@ -4992,12 +4997,7 @@ module Controls {
         }
 
         if (aParam.dataDrawer) {
-            list.setDataDrawer(function (aKey:any, aItem:any, aEl:HTMLElement) {
-                aEl.classList.add(aItem.type);
-                aEl.style.opacity = '.5';
-                aEl.innerText = aKey + ": " + aItem.text;
-                return Controls.TFocusInfo.KFocusAble;
-            });
+            list.setDataDrawer(aParam.dataDrawer);
         }
 
         if (aParam.onFocusedDataItemChanged) {
@@ -5076,7 +5076,7 @@ module Controls {
             carousel.setTransparentAnchor(aParam.transparentAnchor);
         }
         if (aParam.drawEffect) {
-            carousel.setDrawEfect(aParam.drawEffect);
+            carousel.setDrawEffect(aParam.drawEffect);
         }
         if (aParam.anchorDrawer) {
             carousel.setAnchorDrawer(aParam.anchorDrawer);
@@ -5103,14 +5103,26 @@ module Controls {
         return layoutGroupControl;
     }
 
+    function ASSERT(condition, message) {
+        if (!condition) {
+            console.error(message);
+        }
+    }
+
     export function runRoot(aControl: CControl) {
         aControl.draw();
         aControl.setActiveFocus();
 
         document.body.addEventListener('keydown', function (e) {
-            var keyStr = e['keyIdentifier'];
+            var keyStrList = {
+                38: 'Up',
+                40: 'Down',
+                37: 'Left',
+                39: 'Right'
+            };
+            var keyStr = e['keyIdentifier'] || keyStrList[e.keyCode];
+            ASSERT(keyStr, 'Key string not defined');
             var handled = aControl.doKey(keyStr);
-            console.log(handled);
 
             var skip = {
                 'Up': true,
@@ -5143,6 +5155,7 @@ module Controls {
         }
         if (aParam.innerText) {
             el.innerText = aParam.innerText;
+            el.textContent = aParam.innerText;
         }
         if (aParam.backgroundColor) {
             el.style.backgroundColor = aParam.backgroundColor;

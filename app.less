@@ -17,7 +17,7 @@
     //}
 
     p {
-        margin: 0px;
+        margin: 0;
     }
     #idStatus {
         width: 300px;
@@ -28,6 +28,8 @@
     .-carousel {
         height: 100px;
         .-carousel-item {
+            position: absolute;
+            transition: left .3s;
             width: 100px;
             height: 100px;
             .item {
@@ -49,7 +51,7 @@
             //background-color: #444444;
             border: 6px solid #444444;
             opacity: .2;
-            transition: opacity 1s;
+            //transition: opacity 1s;
             &.-afd-leaf {
                 opacity: 1;
             }

@@ -2,7 +2,7 @@ body * {
   box-sizing: border-box;
 }
 body p {
-  margin: 0px;
+  margin: 0;
 }
 body #idStatus {
   width: 300px;
@@ -13,6 +13,8 @@ body .-carousel {
   height: 100px;
 }
 body .-carousel .-carousel-item {
+  position: absolute;
+  transition: left .3s;
   width: 100px;
   height: 100px;
 }
@@ -33,7 +35,6 @@ body .-carousel .-carousel-anchor {
   height: 100px;
   border: 6px solid #444444;
   opacity: .2;
-  transition: opacity 1s;
 }
 body .-carousel .-carousel-anchor.-afd-leaf {
   opacity: 1;

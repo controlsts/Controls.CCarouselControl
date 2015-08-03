@@ -709,7 +709,7 @@ var Controls;
     })(Controls.TParamHAlign || (Controls.TParamHAlign = {}));
     var TParamHAlign = Controls.TParamHAlign;
     var KParamAnimation = "animation";
-    var KParamUserAnimationCSS = "userAnimationCSS";
+    var KParamConfigTransition = "configTransition";
     var KParamAnimationInterval = "animationInterval";
     var KParamKeepFocus = "keepFocus";
     var TRect = (function () {
@@ -914,11 +914,11 @@ var Controls;
             return this._getDrawParam(KParamAnimation) || false;
         };
         // User Animation CSS
-        CControl.prototype.setUseUserAnimationCSS = function (aAnimation) {
-            this._setDrawParam(KParamUserAnimationCSS, aAnimation, false);
+        CControl.prototype.setConfigTransition = function (aConfigTransition) {
+            this._setDrawParam(KParamConfigTransition, aConfigTransition, false);
         };
-        CControl.prototype.getUseUserAnimationCSS = function () {
-            return this._getDrawParam(KParamUserAnimationCSS) || false;
+        CControl.prototype.getConfigTransition = function () {
+            return this._getDrawParam(KParamConfigTransition) || false;
         };
         // AnimationInterval
         CControl.prototype.setAnimationInterval = function (aAnimationInterval) {
@@ -977,10 +977,10 @@ var Controls;
             return this._getDrawParam(KParamStrTransparentAnchor) || false;
         };
         // DrawEfect
-        CControl.prototype.setDrawEfect = function (aDrawEfect) {
-            this._setDrawParam(KParamStrDrawEffect, aDrawEfect, true);
+        CControl.prototype.setDrawEffect = function (aDrawEffect) {
+            this._setDrawParam(KParamStrDrawEffect, aDrawEffect, true);
         };
-        CControl.prototype.getDrawEfect = function () {
+        CControl.prototype.getDrawEffect = function () {
             return this._getDrawParam(KParamStrDrawEffect) || null;
         };
         // Scrolling scheme
@@ -3637,7 +3637,7 @@ var Controls;
         CCarouselControl.prototype._createItem = function (aItem, aTop, aClassName) {
             var orientation = this.getOrientation();
             var animation = this.getAnimation();
-            var useUserAnimationCSS = this.getUseUserAnimationCSS();
+            var configTransition = this.getConfigTransition();
             var animationInterval = this.getAnimationInterval();
             if (!animationInterval) {
                 animationInterval = 0.3;
@@ -3654,13 +3654,13 @@ var Controls;
                 itemEl.classList.add(classNames[i]);
             }
             if (orientation === 2 /* EHorizontal */) {
-                if (animation && !useUserAnimationCSS) {
+                if (animation && configTransition) {
                     itemEl.style.transition = 'left ' + animationInterval + 's linear';
                 }
                 itemEl.style.left = aTop + 'px';
             }
             else {
-                if (animation && !useUserAnimationCSS) {
+                if (animation && configTransition) {
                     itemEl.style.transition = 'top ' + animationInterval + 's linear';
                 }
                 itemEl.style.top = aTop + 'px';
@@ -3670,7 +3670,7 @@ var Controls;
             }
             return itemEl;
         };
-        /*protected*/ CCarouselControl.prototype._doDraw = function (aRect, aDrawParam) {
+        CCarouselControl.prototype._doDraw = function (aRect, aDrawParam) {
             var ret;
             this.setTransition(false);
             if (this._dataChanged) {
@@ -3694,7 +3694,7 @@ var Controls;
             var anchorIndex = this.getAnchorIndex();
             var startIndex = this.getStartIndex();
             var transparentAnchor = this.getTransparentAnchor();
-            var drawEffect = this.getDrawEfect();
+            var drawEffect = this.getDrawEffect();
             var drawnItems = [];
             var i;
             if (!viewCount) {
@@ -3789,16 +3789,22 @@ var Controls;
                             itemPositionStart = -itemWidth;
                         }
                     }
+                    drawInfos.push({
+                        skip: i == anchorIndex,
+                        position: itemPosition,
+                        parentEl: parentEl,
+                        positionStart: itemPositionStart
+                    });
                 }
                 else {
                     parentEl = this._element;
                     itemPosition = nextPosition;
+                    drawInfos.push({
+                        position: itemPosition,
+                        parentEl: parentEl,
+                        positionStart: itemPositionStart
+                    });
                 }
-                drawInfos.push({
-                    position: itemPosition,
-                    parentEl: parentEl,
-                    positionStart: itemPositionStart
-                });
                 if (align == 1 /* EVertical */) {
                     nextPosition += i === anchorIndex ? anchorHeight : itemHeight;
                 }
@@ -3813,7 +3819,7 @@ var Controls;
                 var distClassName = CCarouselControl.KClassDistPrefix + dist;
                 var drawInfo = drawInfos[i];
                 var itemEl = null;
-                if (drawInfo.parentEl) {
+                if (!drawInfo.skip && drawInfo.parentEl) {
                     if (drawEffect == 'spreadOut') {
                         itemEl = this._createItem(item, drawInfo.positionStart, distClassName);
                     }
@@ -3844,7 +3850,7 @@ var Controls;
                             }
                         }
                     }
-                }, 1);
+                }, 0);
             }
             var anchorEl = document.createElement('div');
             anchorEl.classList.add(CCarouselControl.KClassAnchor);
@@ -4009,7 +4015,7 @@ var Controls;
                 _this._handleTransitionEnd();
             });
         };
-        CCarouselControl.prototype._update2 = function (aDown) {
+        CCarouselControl.prototype._update = function (aDown) {
             var menuLen = this._cirMenuItems.length();
             var itemHeight = this.getItemHeight();
             var itemWidth = this.getItemWidth();
@@ -4146,7 +4152,7 @@ var Controls;
                         });
                     }
                 }
-            }, 1);
+            }, 0);
         };
         CCarouselControl.prototype._doTransitionBack = function () {
             var dataLen = this._cirMenuItems.length();
@@ -4172,15 +4178,15 @@ var Controls;
             var result = this._cirMenuItems.getViewItems(viewCount, anchorIndex);
             var items = result.items;
             if (this.getTransparentAnchor()) {
-                var uppperItemNodeList = this._upperBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
+                var upperItemNodeList = this._upperBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
                 var lowerItemNodeList = this._lowerBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
                 var newUpperEl, newLowerEl;
                 if (dataLen < viewCount) {
                     newUpperEl = this._createItem(null, -itemSize);
-                    this._upperBoundEl.insertBefore(newUpperEl, uppperItemNodeList[0]);
-                    uppperItemNodeList = this._upperBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
-                    for (i = 0, len = uppperItemNodeList.length; i < len; i += 1) {
-                        itemEl = uppperItemNodeList[i];
+                    this._upperBoundEl.insertBefore(newUpperEl, upperItemNodeList[0]);
+                    upperItemNodeList = this._upperBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
+                    for (i = 0, len = upperItemNodeList.length; i < len; i += 1) {
+                        itemEl = upperItemNodeList[i];
                         itemEl.innerText = '';
                         item = items[i];
                         if (item) {
@@ -4202,7 +4208,7 @@ var Controls;
                 else {
                     newUpperEl = this._createItem(items[0], -itemSize, null);
                     newLowerEl = this._createItem(items[anchorIndex + 1], -itemSize, null);
-                    uppperItemNodeList[0].parentNode.insertBefore(newUpperEl, uppperItemNodeList[0]);
+                    upperItemNodeList[0].parentNode.insertBefore(newUpperEl, upperItemNodeList[0]);
                     lowerItemNodeList[0].parentNode.insertBefore(newLowerEl, lowerItemNodeList[0]);
                 }
             }
@@ -4226,7 +4232,7 @@ var Controls;
                 this._animate(false);
             }
             else {
-                this._update2(false);
+                this._update(false);
             }
         };
         CCarouselControl.prototype._doTransitionNext = function () {
@@ -4327,7 +4333,7 @@ var Controls;
                 this._animate(true);
             }
             else {
-                this._update2(true);
+                this._update(true);
             }
         };
         CCarouselControl.prototype._doKeyLeft = function () {
@@ -4506,12 +4512,7 @@ var Controls;
             list.setListData(aParam.data);
         }
         if (aParam.dataDrawer) {
-            list.setDataDrawer(function (aKey, aItem, aEl) {
-                aEl.classList.add(aItem.type);
-                aEl.style.opacity = '.5';
-                aEl.innerText = aKey + ": " + aItem.text;
-                return 2 /* KFocusAble */;
-            });
+            list.setDataDrawer(aParam.dataDrawer);
         }
         if (aParam.onFocusedDataItemChanged) {
             list.connectFocusedDataItemChanged(aParam, 'onFocusedDataItemChanged', aParam.onFocusedDataItemChanged);
@@ -4560,7 +4561,7 @@ var Controls;
             carousel.setTransparentAnchor(aParam.transparentAnchor);
         }
         if (aParam.drawEffect) {
-            carousel.setDrawEfect(aParam.drawEffect);
+            carousel.setDrawEffect(aParam.drawEffect);
         }
         if (aParam.anchorDrawer) {
             carousel.setAnchorDrawer(aParam.anchorDrawer);
@@ -4580,13 +4581,24 @@ var Controls;
         return layoutGroupControl;
     }
     Controls.LayoutGroupControl = LayoutGroupControl;
+    function ASSERT(condition, message) {
+        if (!condition) {
+            console.error(message);
+        }
+    }
     function runRoot(aControl) {
         aControl.draw();
         aControl.setActiveFocus();
         document.body.addEventListener('keydown', function (e) {
-            var keyStr = e['keyIdentifier'];
+            var keyStrList = {
+                38: 'Up',
+                40: 'Down',
+                37: 'Left',
+                39: 'Right'
+            };
+            var keyStr = e['keyIdentifier'] || keyStrList[e.keyCode];
+            ASSERT(keyStr, 'Key string not defined');
             var handled = aControl.doKey(keyStr);
-            console.log(handled);
             var skip = {
                 'Up': true,
                 'Down': true,
@@ -4607,6 +4619,7 @@ var Controls;
         }
         if (aParam.innerText) {
             el.innerText = aParam.innerText;
+            el.textContent = aParam.innerText;
         }
         if (aParam.backgroundColor) {
             el.style.backgroundColor = aParam.backgroundColor;

@@ -101,7 +101,7 @@ module gApp {
                 anchorIndex: 3,
                 animation: true,
                 maxKeyQueueCount: 3,
-                drawEffect: 'spreadout',
+                drawEffect: 'spreadOut',
 
                 data: data,
                 dataDrawer: itemDrawer,
@@ -123,7 +123,7 @@ module gApp {
                 anchorIndex: 3,
                 animation: true,
                 maxKeyQueueCount: 3,
-                drawEffect: 'spreadout',
+                drawEffect: 'spreadOut',
                 transparentAnchor: true,
 
                 data: data,
@@ -144,7 +144,7 @@ module gApp {
 
                 onStartToChange: function(aEl: HTMLElement, aItem: TData, aIndex: number) {
                     aEl.style.borderColor = aItem.color;
-                    aEl.getElementsByClassName('text')[0].innerText = aItem.text;
+                    aEl.getElementsByClassName('text')[0]['innerText'] = aItem.text;
                 },
                 onItemSelected: function(aEl, aItem) {
                     alert(aItem + ' Selected');

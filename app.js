@@ -86,7 +86,7 @@ var gApp;
                 anchorIndex: 3,
                 animation: true,
                 maxKeyQueueCount: 3,
-                drawEffect: 'spreadout',
+                drawEffect: 'spreadOut',
                 data: data,
                 dataDrawer: itemDrawer,
                 onFocusStartToChange: function (aEl, aItem, aIndex) {
@@ -105,7 +105,7 @@ var gApp;
                 anchorIndex: 3,
                 animation: true,
                 maxKeyQueueCount: 3,
-                drawEffect: 'spreadout',
+                drawEffect: 'spreadOut',
                 transparentAnchor: true,
                 data: data,
                 dataDrawer: itemDrawer,
@@ -124,7 +124,7 @@ var gApp;
                 },
                 onStartToChange: function (aEl, aItem, aIndex) {
                     aEl.style.borderColor = aItem.color;
-                    aEl.getElementsByClassName('text')[0].innerText = aItem.text;
+                    aEl.getElementsByClassName('text')[0]['innerText'] = aItem.text;
                 },
                 onItemSelected: function (aEl, aItem) {
                     alert(aItem + ' Selected');
