@@ -14,7 +14,6 @@ body .-carousel {
 }
 body .-carousel .-carousel-item {
   position: absolute;
-  transition: left .3s;
   width: 100px;
   height: 100px;
 }

@@ -54,8 +54,23 @@ module Controls {
     var KCssTransitionParamOpa = 'opacity .3s linear';
 
 // DOM helper
-    class Util {
-        static afterTransition(aElement: HTMLElement, aCallBack: Function) {
+    interface TTranformValues {
+        matrix?: {
+            0: number;
+            1: number;
+            2: number;
+            3: number;
+            4: number;
+            5: number;
+        },
+        translate?: {
+            x: number;
+            y: number;
+        }
+    }
+
+    module Util {
+        export function afterTransition(aElement: HTMLElement, aCallBack: Function) {
             var durations = ['0'];
             if (getComputedStyle) {
                 if (getComputedStyle(aElement).transitionDuration) {
@@ -73,7 +88,7 @@ module Controls {
             }
         }
 
-        static remove(aElement: HTMLElement) {
+        export function remove(aElement: HTMLElement) {
             var parent = aElement.parentElement;
             if (parent) {
                 parent.removeChild(aElement);
@@ -82,17 +97,51 @@ module Controls {
             }
         }
 
-        static prepend(aElement: HTMLElement, aNewChild: HTMLElement) {
+        export function prepend(aElement: HTMLElement, aNewChild: HTMLElement) {
             aElement.insertBefore(aNewChild, aElement.firstElementChild);
         }
 
-        static getRect(aElement: HTMLElement): TRect {
+        export function getRect(aElement: HTMLElement): TRect {
             return new TRect({
                 top: aElement.offsetTop,
                 left: aElement.offsetLeft,
                 right: aElement.offsetLeft + aElement.offsetWidth,
                 bottom: aElement.offsetTop + aElement.offsetHeight
             });
+        }
+
+        const KReTransform = /(\w+)\((.+?)\)/g;
+        const KReTransformValue = {
+            'translate': function(value) {
+                console.log(value);
+                let m = /\s*([-\d]+)\w+\s*,\s*([-\d]+)\w+\s*/.exec(value);
+                return {
+                    x: parseInt(m[1], 10),
+                    y: parseInt(m[2], 10)
+                };
+            }
+        };
+
+        export function getTrasformValues(aElement: HTMLElement): TTranformValues {
+            let ret: TTranformValues = {};
+            const transform = aElement.style.transform;
+            let match;
+            while (match = KReTransform.exec(transform)) {
+                let name = match[1];
+                let value = match[2];
+                console.log(name, value);
+                ret[name] = KReTransformValue[name](value);
+            }
+            console.log(ret);
+            return ret;
+        }
+
+        export function setTrasformValues(aElement: HTMLElement, aValues: TTranformValues) {
+            let values = [];
+            if (aValues.translate) {
+                values.push('translate(' + aValues.translate.x + 'px,' + aValues.translate.y + 'px)');
+            }
+            aElement.style.transform = values.join(' ');
         }
     }
 
@@ -279,7 +328,7 @@ module Controls {
         aPrevFocusInfo?: TPrevFocusInfo,
         aPrevKeyStr?: string
     ) {
-        var i, j, len, el: HTMLElement, mapItem: TKeyMapItem, prevMapItem: TKeyMapItem = null;
+        var i, len, el: HTMLElement, mapItem: TKeyMapItem, prevMapItem: TKeyMapItem = null;
         var startIndex: number = 0;
         for (i = 0, len = aFocusable.length; i < len; i++) {
             el = aFocusable[i];
@@ -324,7 +373,7 @@ module Controls {
         aPrevFocusInfo?: TPrevFocusInfo,
         aPrevKeyStr?: string
     ) {
-        var i, j, len;
+        var i, len;
         var el: HTMLElement;
         var mapItem: TKeyMapItem;
         var prevMapItem: TKeyMapItem = null;
@@ -640,7 +689,7 @@ module Controls {
          aFocusable[startIndex].classList.add(KClassActiveFocusedLeaf);
          }
          */
-    }
+    };
 
     interface TSignalHandlerInfo {
         holder: any;
@@ -736,6 +785,9 @@ module Controls {
         EByFocusRemainsRolling,
         EByFixed
     }
+
+    var KParamStrStretchWidth = "stretchWidth";
+    var KParamStrStretchHeight = "stretchHeight";
 
     var KParamStrOrientation = "orientation";
     export enum TParamOrientation {
@@ -913,6 +965,20 @@ module Controls {
 
         setParent(aParentControl: CControl) {
             this._parent = aParentControl;
+        }
+
+        // Size
+        setStretchWidth(aStretchWidth: boolean) {
+            this._setDrawParam(KParamStrStretchWidth, aStretchWidth, false);
+        }
+        getStretchWidth(): boolean {
+            return this._getDrawParam(KParamStrStretchWidth);
+        }
+        setStretchHeight(aStretchHeight: boolean) {
+            this._setDrawParam(KParamStrStretchHeight, aStretchHeight, false);
+        }
+        getStretchHeight(): boolean {
+            return this._getDrawParam(KParamStrStretchHeight);
         }
 
         // Draw param
@@ -1790,12 +1856,10 @@ module Controls {
 
         getItem(aKey: any): any {
             throw "not implemented";
-            return null;
         }
 
         getLength(): number {
             throw "not implemented";
-            return 0;
         }
 
         insertItem(aKey: any, aItem: any) {
@@ -2856,12 +2920,13 @@ module Controls {
             }
         }
 
-        _doDraw(aRect: TRect, aDrawParam: { [key: string]: any; }) {
-            return this._doDrawCommon(this._element, aRect, aDrawParam);
+        protected _getDrawElement(): HTMLElement {
+            return this._element;
         }
 
-        _doDrawCommon(aParent: HTMLElement, aRect: TRect, aDrawParam: { [key: string]: any; }) {
+        protected _doDraw(aRect: TRect, aDrawParam: { [key: string]: any; }) {
             var ret: HTMLElement[] = [];
+            var parent = this._getDrawElement();
             if (this._root) {
                 this._element.classList.add(KClassFocused);
             }
@@ -2870,7 +2935,13 @@ module Controls {
                 c = this._child[i];
                 el = c._element;
                 el.attributes["data"] = i;
-                aParent.appendChild(el);
+                if (c.getStretchWidth()) {
+                    el.attributes["data-stretch-width"] = "true";
+                }
+                if (c.getStretchHeight()) {
+                    el.attributes["data-stretch-height"] = "true";
+                }
+                parent.appendChild(el);
                 c.draw(aRect);
                 if (c.isFocusable()) {
                     ret.push(el);
@@ -2946,8 +3017,8 @@ module Controls {
         for (i = 0, len = aChild.length; i < len; i++) {
             el = aChild[i];
             if (el) {
-                w = el.offsetWidth;
-                h = el.offsetHeight;
+                w = (el.attributes["data-stretch-width"]) ? 0: el.offsetWidth;
+                h = (el.attributes["data-stretch-height"]) ? 0: el.offsetHeight;
                 maxWidth = Math.max(maxWidth, w);
                 maxHeight = Math.max(maxHeight, h);
                 totalWidth += w;
@@ -2984,7 +3055,6 @@ module Controls {
         } else if (aVAlign == TParamVAlign.EBottom) {
             posTop = aEl.offsetHeight - (aMargins.b + aTotalHeight);
         }
-        var posLeft = aMargins.l;
 
         var i, len, el: HTMLElement, posLeft: number;
         for (i = 0, len = aChild.length; i < len; i++) {
@@ -2996,6 +3066,14 @@ module Controls {
                 } else if (aHAlign == TParamHAlign.ERight) {
                     posLeft = aEl.offsetWidth - (aMargins.r + el.offsetWidth);
                 }
+
+                if (el.attributes["data-stretch-height"]) {
+                    el.style.height = (aEl.offsetHeight - aTotalHeight) + 'px';
+                }
+                if (el.attributes["data-stretch-width"]) {
+                    el.style.width = aEl.offsetWidth + 'px';
+                }
+
                 el.style.left = posLeft + "px";
                 posTop += el.offsetHeight + aPadding;
             } else {
@@ -3043,6 +3121,15 @@ module Controls {
             } else if (aVAlign == TParamVAlign.EBottom) {
                 posTop = aEl.offsetHeight - (aMargins.b + el.offsetHeight);
             }
+
+            if (el.attributes["data-stretch-height"]) {
+                el.style.height = aEl.offsetHeight + 'px';
+            }
+            if (el.attributes["data-stretch-width"]) {
+                el.style.width = (aEl.offsetWidth - aTotalWidth) + 'px';
+                console.log(aEl.offsetWidth, aTotalWidth)
+            }
+
             el.style.top = posTop + "px";
             posLeft += el.offsetWidth + aPadding;
         }
@@ -3241,6 +3328,13 @@ module Controls {
         private _getContainerPos(): { top: number; left: number; } {
             var containerTop = this._container.offsetTop;
             var containerLeft = this._container.offsetLeft;
+            if (this.getAnimation()) {
+                let transformValues = Util.getTrasformValues(this._container);
+                if (transformValues.translate) {
+                    containerTop = transformValues.translate.y;
+                    containerLeft = transformValues.translate.x;
+                }
+            }
             return {
                 top: containerTop,
                 left: containerLeft
@@ -3278,8 +3372,17 @@ module Controls {
         initDrawPosition(aPosition?: { top: number; left: number; }) {
             var pos = (aPosition) ? aPosition : { top: 0, left: 0 };
             this._setContainerPosForAni(pos);
-            this._container.style.top = pos.top + "px";
-            this._container.style.left = pos.left + "px";
+            if (this.getAnimation()) {
+                Util.setTrasformValues(this._container, {
+                    translate: {
+                        x: pos.left,
+                        y: pos.top
+                    }
+                });
+            } else {
+                this._container.style.top = pos.top + "px";
+                this._container.style.left = pos.left + "px";
+            }
             this.draw();
         }
         setDrawPosition(aPosition: { top: number; left: number; }) {
@@ -3290,8 +3393,15 @@ module Controls {
                 });
                 this._setContainerPosForAni(aPosition);
                 this.setTransition(true);
-                this._container.style.top = aPosition.top + "px";
-                this._container.style.left = aPosition.left + "px";
+                // this._container.style.top = aPosition.top + "px";
+                // this._container.style.left = aPosition.left + "px";
+
+                Util.setTrasformValues(this._container, {
+                    translate: {
+                        x: aPosition.left,
+                        y: aPosition.top
+                    }
+                });
             } else {
                 this._container.style.top = aPosition.top + "px";
                 this._container.style.left = aPosition.left + "px";
@@ -3301,7 +3411,14 @@ module Controls {
         setAnimation(aAnimation: boolean) {
             super.setAnimation(aAnimation);
             if (aAnimation) {
-                this._container.style[KCssPropTransition] = KCssTransitionParamPos;
+                // this._container.style[KCssPropTransition] = KCssTransitionParamPos;
+                this._container.style[KCssPropTransition] = 'transform .3s linear';
+                Util.setTrasformValues(this._container, {
+                    translate: {
+                        x: 0,
+                        y: 0
+                    }
+                });
             }
         }
     }
@@ -3558,7 +3675,7 @@ module Controls {
         childControls: CControl[];
     }
 
-    export class CLayeredGroupControl extends CGroupControl {
+    export class CLayeredGroupControl extends CLayoutGroupControl {
         private _layerInfoStack: TLayerInfo[] = [];
         private _createParam: TCreateLayerParam;
         private _elLayer: HTMLElement;
@@ -3759,16 +3876,16 @@ module Controls {
 
         }
 
-        draw(aRect?: TRect) {
-            super.draw(aRect);
-            this.setActiveFocus();
-        }
+        //draw(aRect?: TRect) {
+        //    super.draw(aRect);
+        //    this.setActiveFocus();
+        //}
 
-        _doDraw(aRect: TRect, aDrawParam: { [key: string]: any; }) {
+        protected _getDrawElement(): HTMLElement {
             if (!this._elLayer) {
                 throw "Layer must be created before draw";
             }
-            return this._doDrawCommon(this._elLayer, aRect, aDrawParam);
+            return this._elLayer;
         }
 
         createLayoutControl(aItemDrawers: FItemDrawer[]): CLayoutControl {
@@ -4103,7 +4220,7 @@ module Controls {
                 aItemEl.innerHTML = aItem;
             }
         }
-        private _createItem(aItem: { index: number; data: any; }, aTop: number, aClassName?: string): HTMLElement {
+        private _createItem(aItem: { index: number; data: any; }, aStartPos: number, aClassName?: string): HTMLElement {
             var orientation: TParamOrientation = this.getOrientation();
             var animation: boolean = this.getAnimation();
             var configTransition: boolean = this.getConfigTransition();
@@ -4117,28 +4234,47 @@ module Controls {
             if (aClassName) {
                 classNames.push(aClassName);
             }
-            var itemEl = document.createElement('div');
-            itemEl.style.position = "absolute";
+            var elItem = document.createElement('div');
+            elItem.style.position = "absolute";
             var i, len;
             for (i = 0, len = classNames.length; i < len; i += 1) {
-                itemEl.classList.add(classNames[i]);
+                elItem.classList.add(classNames[i]);
             }
             if (orientation === TParamOrientation.EHorizontal) {
-                if (animation && configTransition) {
-                    itemEl.style.transition = 'left ' + animationInterval + 's linear';
+                if (animation) {
+                    // elItem.style.transition = 'left ' + animationInterval + 's linear';
+                    Util.setTrasformValues(elItem, {
+                        translate: {
+                            x: aStartPos,
+                            y: 0
+                        }
+                    });
+                    elItem.style.transition = 'transform ' + animationInterval + 's linear';
+                    elItem.style.left = 0 + 'px';
+                } else {
+                    elItem.style.left = aStartPos + 'px';
                 }
-                itemEl.style.left = aTop + 'px';
             } else {
-                if (animation && configTransition) {
-                    itemEl.style.transition = 'top ' + animationInterval + 's linear';
+                if (animation) {
+                    // elItem.style.transition = 'top ' + animationInterval + 's linear';
+                    Util.setTrasformValues(elItem, {
+                        translate: {
+                            x: 0,
+                            y: aStartPos
+                        }
+                    });
+                    elItem.style.transition = 'transform ' + animationInterval + 's linear';
+                    elItem.style.top = 0 + 'px';
+                } else {
+                    elItem.style.top = aStartPos + 'px';
                 }
-                itemEl.style.top = aTop + 'px';
             }
             if (aItem) {
-                this._drawItem(itemEl, aItem.data, aItem.index);
+                this._drawItem(elItem, aItem.data, aItem.index);
             }
-            return itemEl;
+            return elItem;
         }
+
         protected _doDraw(aRect: TRect, aDrawParam: { [key: string]: any; }): HTMLElement[] {
             var ret: HTMLElement[];
             this.setTransition(false);
@@ -4161,6 +4297,7 @@ module Controls {
             var itemHeight: number = this.getItemHeight();
             var anchorIndex: number = this.getAnchorIndex();
             var startIndex: number = this.getStartIndex();
+            var animation: boolean = this.getAnimation();
             var transparentAnchor: boolean = this.getTransparentAnchor();
             var drawEffect: string = this.getDrawEffect();
             var drawnItems: any = [];
@@ -4305,9 +4442,27 @@ module Controls {
                     for (i = 0; i < drawInfos.length; i++) {
                         if (drawnItems[i]) {
                             if (align == TParamOrientation.EVertical) {
-                                drawnItems[i].style.top = drawInfos[i].position + 'px';
+                                if (animation) {
+                                    Util.setTrasformValues(drawnItems[i], {
+                                        translate: {
+                                            x: 0,
+                                            y: drawInfos[i].position
+                                        }
+                                    });
+                                } else {
+                                    drawnItems[i].style.top = drawInfos[i].position + 'px';
+                                }
                             } else {
-                                drawnItems[i].style.left = drawInfos[i].position + 'px';
+                                if (animation) {
+                                    Util.setTrasformValues(drawnItems[i], {
+                                        translate: {
+                                            x: drawInfos[i].position,
+                                            y: 0
+                                        }
+                                    });
+                                } else {
+                                    drawnItems[i].style.left = drawInfos[i].position + 'px';
+                                }
                             }
                         }
                     }
@@ -4351,7 +4506,7 @@ module Controls {
             }
             return this._element;
         }
-        private _moveItemsLeftward(aItemsEl: NodeList, aItemWidth: number, aAnchorIndex: number, aIndexOffset: number, aAnchorWidth: number) {
+        private _moveItemsLeftward(aAnimation: boolean, aItemsEl: NodeList, aItemWidth: number, aAnchorIndex: number, aIndexOffset: number, aAnchorWidth: number) {
             var nextLeft = 0, i;
             for (i = 0; i < aItemsEl.length; i += 1) {
                 var itemEl: HTMLElement = <HTMLElement> aItemsEl[i];
@@ -4364,7 +4519,16 @@ module Controls {
                 var dist = Math.abs(diff);
                 var direction = diff < 0 ? CCarouselControl.KClassUpper : CCarouselControl.KClassLower;
                 var distClassName = CCarouselControl.KClassDistPrefix + dist;
-                itemEl.style.left = nextLeft + 'px';
+                if (aAnimation) {
+                    Util.setTrasformValues(itemEl, {
+                        translate: {
+                            x: nextLeft,
+                            y: 0
+                        }
+                    });
+                } else {
+                    itemEl.style.left = nextLeft + 'px';
+                }
                 itemEl.classList.remove(prevDistClassName);
                 itemEl.classList.add(distClassName);
                 if (diff === 0) {
@@ -4376,7 +4540,7 @@ module Controls {
                 nextLeft += (aAnchorWidth && itemIndex == aAnchorIndex) ? aAnchorWidth : aItemWidth;
             }
         }
-        private _moveItemsRightward(aItemsEl: NodeList, aItemWidth: number, aAnchorIndex: number, aIndexOffset: number, aAnchorWidth: number) {
+        private _moveItemsRightward(aAnimation: boolean, aItemsEl: NodeList, aItemWidth: number, aAnchorIndex: number, aIndexOffset: number, aAnchorWidth: number) {
             var nextLeft = -aItemWidth, i;
             for (i = 0; i < aItemsEl.length; i += 1) {
                 var itemEl: HTMLElement = <HTMLElement> aItemsEl[i];
@@ -4389,7 +4553,16 @@ module Controls {
                 var dist = Math.abs(diff);
                 var direction = diff < 0 ? CCarouselControl.KClassUpper : CCarouselControl.KClassLower;
                 var distClassName = CCarouselControl.KClassDistPrefix + dist;
-                itemEl.style.left = nextLeft + 'px';
+                if (aAnimation) {
+                    Util.setTrasformValues(itemEl, {
+                        translate: {
+                            x: nextLeft,
+                            y: 0
+                        }
+                    });
+                } else {
+                    itemEl.style.left = nextLeft + 'px';
+                }
                 itemEl.classList.remove(prevDistClassName);
                 itemEl.classList.add(distClassName);
                 if (diff === 0) {
@@ -4401,7 +4574,7 @@ module Controls {
                 nextLeft += (aAnchorWidth && itemIndex == aAnchorIndex) ? aAnchorWidth : aItemWidth;
             }
         }
-        private _moveItemsDownward(aItemsEl: NodeList, aItemHeight: number, aAnchorIndex: number, aIndexOffset: number, aAnchorHeight: number) {
+        private _moveItemsDownward(aAnimation: boolean, aItemsEl: NodeList, aItemHeight: number, aAnchorIndex: number, aIndexOffset: number, aAnchorHeight: number) {
             var nextTop = 0;
             var i, len;
             for (i = 0, len = aItemsEl.length; i < len; i += 1) {
@@ -4415,7 +4588,16 @@ module Controls {
                 var dist = Math.abs(diff);
                 var direction = diff < 0 ? CCarouselControl.KClassUpper : CCarouselControl.KClassLower;
                 var distClassName = CCarouselControl.KClassDistPrefix + dist;
-                itemEl.style.top = nextTop + 'px';
+                if (aAnimation) {
+                    Util.setTrasformValues(itemEl, {
+                        translate: {
+                            x: 0,
+                            y: nextTop
+                        }
+                    });
+                } else {
+                    itemEl.style.top = nextTop + 'px';
+                }
                 itemEl.classList.remove(prevDistClassName);
                 itemEl.classList.add(distClassName);
                 if (diff === 0) {
@@ -4427,7 +4609,7 @@ module Controls {
                 nextTop += (aAnchorHeight && itemIndex === aAnchorIndex) ? aAnchorHeight : aItemHeight;
             }
         }
-        private _moveItemsUpward(aItemsEl: NodeList, aItemHeight: number, aAnchorIndex: number, aIndexOffset: number, aAnchorHeight: number) {
+        private _moveItemsUpward(aAnimation: boolean, aItemsEl: NodeList, aItemHeight: number, aAnchorIndex: number, aIndexOffset: number, aAnchorHeight: number) {
             var nextTop = -aItemHeight;
             var i, len;
             for (i = 0, len = aItemsEl.length; i < len; i += 1) {
@@ -4441,7 +4623,16 @@ module Controls {
                 var dist = Math.abs(diff);
                 var direction = diff < 0 ? CCarouselControl.KClassUpper : CCarouselControl.KClassLower;
                 var distClassName = CCarouselControl.KClassDistPrefix + dist;
-                itemEl.style.top = nextTop + 'px';
+                if (aAnimation) {
+                    Util.setTrasformValues(itemEl, {
+                        translate: {
+                            x: 0,
+                            y: nextTop
+                        }
+                    });
+                } else {
+                    itemEl.style.top = nextTop + 'px';
+                }
                 itemEl.classList.remove(prevDistClassName);
                 itemEl.classList.add(distClassName);
                 if (diff === 0) {
@@ -4461,7 +4652,9 @@ module Controls {
                 this._keyQueue = [];
             } else {
                 if (this._keyQueue.length) {
-                    this[this._keyQueue.shift()]();
+                    setTimeout(() => {
+                        this[this._keyQueue.shift()]();
+                    });
                 } else {
                     this._emitCurrentItemChanged(this._anchorEl, this._cirMenuItems.curItem(), this._cirMenuItems.cur());
                 }
@@ -4481,6 +4674,7 @@ module Controls {
             var anchorHeight: number = this.getAnchorHeight();
             var anchorWidth: number = this.getAnchorWidth();
             var anchorIndex: number = this.getAnchorIndex();
+            var animation: boolean = this.getAnimation();
             var transparentAnchor: boolean = this.getTransparentAnchor();
             var align: TParamOrientation = this.getOrientation();
             var itemOffset: number;
@@ -4502,8 +4696,8 @@ module Controls {
                 var upperItemsEl = this._upperBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
                 var lowerItemsEl = this._lowerBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
                 if (aDown) {
-                    fnMoveItemUpper(upperItemsEl, itemOffset, anchorIndex, -1);
-                    fnMoveItemUpper(lowerItemsEl, itemOffset, anchorIndex, anchorIndex);
+                    fnMoveItemUpper(animation, upperItemsEl, itemOffset, anchorIndex, -1);
+                    fnMoveItemUpper(animation, lowerItemsEl, itemOffset, anchorIndex, anchorIndex);
                     if (lowerItemsEl.length) {
                         upperItemsEl[0].parentNode.removeChild(upperItemsEl[0]);
                         lowerItemsEl[0].parentNode.removeChild(lowerItemsEl[0]);
@@ -4511,8 +4705,8 @@ module Controls {
                         upperItemsEl[0].parentNode.removeChild(upperItemsEl[0]);
                     }
                 } else {
-                    fnMoveItemlower(upperItemsEl, itemOffset, anchorIndex, 0);
-                    fnMoveItemlower(lowerItemsEl, itemOffset, anchorIndex, anchorIndex + 1);
+                    fnMoveItemlower(animation, upperItemsEl, itemOffset, anchorIndex, 0);
+                    fnMoveItemlower(animation, lowerItemsEl, itemOffset, anchorIndex, anchorIndex + 1);
                     if (lowerItemsEl.length) {
                         upperItemsEl[0].parentNode.removeChild(upperItemsEl[upperItemsEl.length - 1]);
                         lowerItemsEl[0].parentNode.removeChild(lowerItemsEl[lowerItemsEl.length - 1]);
@@ -4523,10 +4717,10 @@ module Controls {
             } else {
                 var itemsEl = this._element.querySelectorAll(CCarouselControl.KSelectorItem);
                 if (aDown) {
-                    fnMoveItemUpper(itemsEl, itemOffset, anchorIndex, -1, anchorOffset);
+                    fnMoveItemUpper(animation, itemsEl, itemOffset, anchorIndex, -1, anchorOffset);
                     itemsEl[0].parentNode.removeChild(itemsEl[0]);
                 } else {
-                    fnMoveItemlower(itemsEl, itemOffset, anchorIndex, 0, anchorOffset);
+                    fnMoveItemlower(animation, itemsEl, itemOffset, anchorIndex, 0, anchorOffset);
                     itemsEl[0].parentNode.removeChild(itemsEl[itemsEl.length - 1]);
                 }
             }
@@ -4544,6 +4738,7 @@ module Controls {
                     anchorWidth: number = this.getAnchorWidth(),
                     itemHeight: number = this.getItemHeight(),
                     itemWidth: number = this.getItemWidth(),
+                    animation: boolean = this.getAnimation(),
                     transparentAnchor: boolean = this.getTransparentAnchor(),
                     nextTop: number = 0, //
                     itemOffset: number,
@@ -4571,8 +4766,8 @@ module Controls {
                     var upperItemNodeList = this._upperBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
                     var lowerItemNodeList = this._lowerBoundEl.querySelectorAll(CCarouselControl.KSelectorItem);
                     if (aDown) {
-                        fnMoveItemUpper(upperItemNodeList, itemOffset, anchorIndex, -1);
-                        fnMoveItemUpper(lowerItemNodeList, itemOffset, anchorIndex, anchorIndex);
+                        fnMoveItemUpper(animation, upperItemNodeList, itemOffset, anchorIndex, -1);
+                        fnMoveItemUpper(animation, lowerItemNodeList, itemOffset, anchorIndex, anchorIndex);
                         if (lowerItemNodeList.length) {
                             this._doTransitionAndAfter(<HTMLElement> lowerItemNodeList[lowerItemNodeList.length - 1], function () {
                                 upperItemNodeList[0].parentNode.removeChild(upperItemNodeList[0]);
@@ -4584,8 +4779,8 @@ module Controls {
                             });
                         }
                     } else {
-                        fnMoveItemlower(upperItemNodeList, itemOffset, anchorIndex, 0);
-                        fnMoveItemlower(lowerItemNodeList, itemOffset, anchorIndex, anchorIndex + 1);
+                        fnMoveItemlower(animation, upperItemNodeList, itemOffset, anchorIndex, 0);
+                        fnMoveItemlower(animation, lowerItemNodeList, itemOffset, anchorIndex, anchorIndex + 1);
                         if (lowerItemNodeList.length) {
                             this._doTransitionAndAfter(<HTMLElement> lowerItemNodeList[lowerItemNodeList.length - 1], function () {
                                 upperItemNodeList[0].parentNode.removeChild(upperItemNodeList[upperItemNodeList.length - 1]);
@@ -4600,12 +4795,12 @@ module Controls {
                 } else {
                     var itemNodeList = this._element.querySelectorAll(CCarouselControl.KSelectorItem);
                     if (aDown) {
-                        fnMoveItemUpper(itemNodeList, itemOffset, anchorIndex, -1, anchorOffset);
+                        fnMoveItemUpper(animation, itemNodeList, itemOffset, anchorIndex, -1, anchorOffset);
                         this._doTransitionAndAfter(<HTMLElement> itemNodeList[itemNodeList.length - 1], function () {
                             itemNodeList[0].parentNode.removeChild(itemNodeList[0]);
                         });
                     } else {
-                        fnMoveItemlower(itemNodeList, itemOffset, anchorIndex, 0, anchorOffset);
+                        fnMoveItemlower(animation, itemNodeList, itemOffset, anchorIndex, 0, anchorOffset);
                         this._doTransitionAndAfter(<HTMLElement> itemNodeList[itemNodeList.length - 1], function () {
                             itemNodeList[0].parentNode.removeChild(itemNodeList[itemNodeList.length - 1]);
                         });
@@ -4687,6 +4882,7 @@ module Controls {
                     }
                 }
             }
+            var trick = this._element.offsetHeight;
             if (animation) {
                 this._animate(false);
             } else {
@@ -4767,10 +4963,11 @@ module Controls {
                 }
             } else {
                 var itemNodeList = this._element.querySelectorAll(CCarouselControl.KSelectorItem);
+                let newItemEl: HTMLElement;
                 if (align == TParamOrientation.EVertical) {
-                    var newItemEl = this._createItem(items[items.length - 1], this._height, CCarouselControl.KClassLower);
+                    newItemEl = this._createItem(items[items.length - 1], this._height, CCarouselControl.KClassLower);
                 } else {
-                    var newItemEl = this._createItem(items[items.length - 1], this._width, CCarouselControl.KClassLower);
+                    newItemEl = this._createItem(items[items.length - 1], this._width, CCarouselControl.KClassLower);
                 }
                 this._element.appendChild(newItemEl);
                 if (dataLen < viewCount) {
@@ -4784,6 +4981,7 @@ module Controls {
                     }
                 }
             }
+            var trick = this._element.offsetHeight;
             if (animation) {
                 this._animate(true);
             } else {
@@ -4907,6 +5105,8 @@ module Controls {
         id?: string;
         width?: number;
         height?: number;
+        stretchWidth?: boolean;
+        stretchHeight?: boolean;
         orientation?: TParamOrientation;
         padding?: number;
         margins?: number[];
@@ -4931,6 +5131,14 @@ module Controls {
 
         if (aParam.height) {
             aControl.getElement().style.height = aParam.height + 'px';
+        }
+
+        if (aParam.stretchWidth) {
+            aControl.setStretchWidth(aParam.stretchWidth);
+        }
+
+        if (aParam.stretchHeight) {
+            aControl.setStretchHeight(aParam.stretchHeight);
         }
 
         if (aParam.orientation) {
@@ -5103,6 +5311,28 @@ module Controls {
         return layoutGroupControl;
     }
 
+    export interface TLayeredGroupControl extends TControl {
+        rootLayeredGroup?: CLayeredGroupControl;
+        createLayerParam?: TCreateLayerParam;
+        controls: CControl[];
+    }
+
+    export function LayeredGroupControl(aParam: TLayeredGroupControl) {
+        var layeredGroupControl = aParam.rootLayeredGroup || new Controls.CLayeredGroupControl(aParam.el || null);
+        fillControlParam(layeredGroupControl, aParam);
+        if (aParam.controls) {
+            layeredGroupControl.createLayer(aParam.createLayerParam);
+            layeredGroupControl.setOwnedChildControls(aParam.controls);
+        }
+
+        if (aParam.rootLayeredGroup) {
+            layeredGroupControl.draw();
+            layeredGroupControl.setActiveFocus();
+        }
+
+        return layeredGroupControl;
+    }
+
     function ASSERT(condition, message) {
         if (!condition) {
             console.error(message);
@@ -5110,6 +5340,7 @@ module Controls {
     }
 
     export function runRoot(aControl: CControl) {
+        aControl.getElement().style.overflow = 'hidden';
         aControl.draw();
         aControl.setActiveFocus();
 
@@ -5118,10 +5349,12 @@ module Controls {
                 38: 'Up',
                 40: 'Down',
                 37: 'Left',
-                39: 'Right'
+                39: 'Right',
+                8: 'Back',
+                13: 'Ok'
             };
-            var keyStr = e['keyIdentifier'] || keyStrList[e.keyCode];
-            ASSERT(keyStr, 'Key string not defined');
+            var keyStr = keyStrList[e.keyCode] || e['keyIdentifier'];
+            ASSERT(keyStr, 'Key string not defined, ' + e.keyCode);
             var handled = aControl.doKey(keyStr);
 
             var skip = {
